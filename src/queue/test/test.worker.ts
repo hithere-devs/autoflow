@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq';
-import { config } from '../config';
+import { config } from '../../config';
 
 export interface TestJobData {
 	message: string;

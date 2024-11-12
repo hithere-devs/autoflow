@@ -5,6 +5,7 @@
 - [x] Initialize a git repo and push this code
 - [x] Setting Up Middlewares and Routing
 - [x] Adding BullMQ Setup
+- [x] Swagger Setup
 - [ ] Writing starting tests
 - [ ] Documenting required APIs
 - [ ] Implement Authentication
