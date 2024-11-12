@@ -1,18 +1,13 @@
 // src/server.ts
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { Queue, Worker } from 'bullmq';
-// import { errorHandler } from './middleware/error-handler';
-// import { requestLogger } from './middleware/request-logger';
-// import { configureRoutes } from './routes';
-// import { db } from './db';
-// import { createNodeWorker } from './queue/workers/node.worker';
-// import { createPipelineWorker } from './queue/workers/pipeline.worker';
-// import { NodeTypeRegistry } from './registry/node-type-registry';
-// import { PipelineRepository } from './repositories/pipeline.repository';
-// import { ExecutionRepository } from './repositories/execution.repository';
-import { config } from './config/config';
+import morgan from 'morgan';
+import { createTestWorker, testQueue } from '@/queue';
+import { setupBullBoard } from '@/config/bull-board';
+import { errorHandler } from '@/middlewares/error-handler';
+import { swaggerRoutes } from '@/routes/swagger';
+import apiRouter from '@/routes';
 
 export async function createServer() {
 	const app = express();
@@ -21,63 +16,57 @@ export async function createServer() {
 	app.use(helmet());
 	app.use(cors());
 	app.use(express.json());
-	// app.use(requestLogger);
+	app.use('/api/docs', swaggerRoutes);
 
-	// Initialize repositories
-	// const pipelineRepo = new PipelineRepository(db);
-	// const executionRepo = new ExecutionRepository(db);
+	// Setup Bull Board
+	const bullBoardAdapter = setupBullBoard();
+	app.use('/admin/queues', bullBoardAdapter.getRouter());
 
-	// Initialize queue
-	const nodeQueue = new Queue('node-execution', {
-		connection: {
-			host: config.redis.host,
-			port: config.redis.port,
-		},
-		defaultJobOptions: {
-			attempts: 3,
-			backoff: {
-				type: 'exponential',
-				delay: 1000,
-			},
-		},
+	// Initialize test queue worker
+	const testWorker = createTestWorker();
+
+	// Test Endpoint for Queue
+	app.post('/test-job', async (req, res) => {
+		const job = await testQueue.add('test', {
+			message: req.body.message || 'Hello from test job!',
+		});
+		res.json({ jobId: job.id });
 	});
 
-	const pipelineQueue = new Queue('pipeline-execution', {
-		connection: {
-			host: config.redis.host,
-			port: config.redis.port,
-		},
+	const serverChecks = async (
+		req: Request,
+		res: Response,
+		next: NextFunction
+	) => {
+		console.log('Running server checks...');
+		// Add server checks here
+		// e.g. check if database connection is established
+		console.log('Server checks passed!');
+		next();
+	};
+
+	// Health Check Enpoint
+	app.get('/admin', serverChecks, async (req, res) => {
+		res.send({
+			status: 200,
+			message: 'Server is up and running with all checks passed!',
+		});
 	});
 
-	// // Initialize node type registry
-	// const nodeTypeRegistry = new NodeTypeRegistry();
+	// setup request logging
+	app.use(morgan('dev'));
 
-	// // Initialize workers
-	// const nodeWorker = createNodeWorker(executionRepo, nodeTypeRegistry);
-	// const pipelineWorker = createPipelineWorker(
-	// 	pipelineQueue,
-	// 	nodeQueue,
-	// 	executionRepo
-	// );
-
-	// // Configure routes
-	// configureRoutes(app, {
-	// 	pipelineRepo,
-	// 	executionRepo,
-	// 	nodeQueue,
-	// 	pipelineQueue,
-	// });
+	// Configure routes
+	app.use('/api', apiRouter);
 
 	// Error handling
-	// app.use(errorHandler);
+	app.use(errorHandler);
 
 	// Graceful shutdown
 	const cleanup = async () => {
 		console.log('Shutting down...');
-		// await nodeWorker.close();
-		// await pipelineWorker.close();
-		await nodeQueue.close();
-		await pipelineQueue.close();
+		await testWorker.close();
+		await testQueue.close();
 		process.exit(0);
 	};
 

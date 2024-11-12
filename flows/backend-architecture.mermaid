@@ -1,0 +1,34 @@
+flowchart TB
+    subgraph API["API Layer"]
+        Router["Express Router"]
+        Controllers["Controllers"]
+    end
+
+    subgraph Queue["Queue System"]
+        direction TB
+        NodeQueue["Node Execution Queue"]
+        PipelineQueue["Pipeline Execution Queue"]
+        WorkerPool["Worker Pool"]
+
+        NodeQueue --> WorkerPool
+        PipelineQueue --> WorkerPool
+    end
+
+    subgraph Storage["Storage Layer"]
+        SQLite[(SQLite DB)]
+        Cache["Redis Cache"]
+    end
+
+    Router --> Controllers
+    Controllers --> Queue
+    Queue --> Storage
+    Controllers --> Storage
+
+    subgraph Workers["Worker Types"]
+        direction LR
+        AIWorker["AI Node Worker"]
+        ScriptWorker["Script Node Worker"]
+        FileWorker["File Node Worker"]
+    end
+
+    WorkerPool --> Workers

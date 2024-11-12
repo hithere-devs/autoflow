@@ -3,8 +3,12 @@
 - [x] DB Connection with Drizzle Config
 - [x] Setup Server Flow on a PORT
 - [x] Initialize a git repo and push this code
-- [ ] Adding BullMQ Setup
-- [ ] Writing starter tests
+- [x] Setting Up Middlewares and Routing
+- [x] Adding BullMQ Setup
+- [ ] Writing starting tests
+- [ ] Documenting required APIs
+- [ ] Implement Authentication
+
 
 # CMDs
 
@@ -23,64 +27,45 @@ npm run db:generate
 npm run db:push
 ```
 
-4. Run the Server
-```
-npm run dev
-```
-
-5. Start a Docker Container or your local redis
+4. Start a Docker Container or your local redis
 ```
 docker run -d -p 6379:6379 redis:alpine
 ```
 
+5. Run the Server
+```
+npm run dev
+```
+
+6. Important Links
+```
+API Docs -          http://localhost:PORT/api/docs
+Health Check URL -  http://localhost:PORT/admin
+Bull Board -        http://localhost:PORT/admin/queues
+Server URL -        http://localhost:PORT/
+```
+
+
+
 # Project structure
 
 ```
-src/
-  ├── api/          # API routes and controllers
-  ├── services/     # Business logic
-  ├── queue/        # BullMQ setup
-  ├── workers/      # Node execution workers
-  ├── models/       # Database models
-  ├── utils/        # Helper functions
-  └── tests/        # Test suites
-```
-
-# Backend Architecture
-
-```
-flowchart TB
-    subgraph API["API Layer"]
-        Router["Express Router"]
-        Controllers["Controllers"]
-    end
-
-    subgraph Queue["Queue System"]
-        direction TB
-        NodeQueue["Node Execution Queue"]
-        PipelineQueue["Pipeline Execution Queue"]
-        WorkerPool["Worker Pool"]
-
-        NodeQueue --> WorkerPool
-        PipelineQueue --> WorkerPool
-    end
-
-    subgraph Storage["Storage Layer"]
-        SQLite[(SQLite DB)]
-        Cache["Redis Cache"]
-    end
-
-    Router --> Controllers
-    Controllers --> Queue
-    Queue --> Storage
-    Controllers --> Storage
-
-    subgraph Workers["Worker Types"]
-        direction LR
-        AIWorker["AI Node Worker"]
-        ScriptWorker["Script Node Worker"]
-        FileWorker["File Node Worker"]
-    end
-
-    WorkerPool --> Workers
+  src/
+    |-- config
+    |-- lib
+    |-- controllers
+    |-- models
+    |-- middlewares
+    |-- db
+    |-- services
+    |-- tests
+    |-- utils
+    |-- nodes
+    |-- types
+    |-- queue
+      |-- queues
+      |-- workers
+    |-- routes
+      |-- swagger
+      |-- v1
 ```
