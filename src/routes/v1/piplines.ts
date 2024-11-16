@@ -1,4 +1,14 @@
+// src/routes/v1/pipeline.routes.ts
 import { Router, Request, Response } from 'express';
+import {
+	createPipeline,
+	updatePipeline,
+	deletePipeline,
+	fetchAllPipelines,
+	fetchPipeline,
+	clonePipeline,
+	executePipeline,
+} from '@/controllers/pipeline';
 
 const pipelineRoutes = Router();
 
@@ -52,33 +62,7 @@ const pipelineRoutes = Router();
 
 /**
  * @swagger
- * /api/v1/pipelines:
- *   get:
- *     summary: Get all pipelines
- *     tags: [Pipelines]
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: List of pipelines
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Pipeline'
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ * /api/v1/pipeline:
  *   post:
  *     summary: Create a new pipeline
  *     tags: [Pipelines]
@@ -90,13 +74,15 @@ const pipelineRoutes = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
  *             properties:
  *               name:
  *                 type: string
  *               description:
  *                 type: string
+ *               published:
+ *                 type: boolean
+ *               metadata:
+ *                 type: object
  *     responses:
  *       201:
  *         description: Pipeline created successfully
@@ -105,21 +91,60 @@ const pipelineRoutes = Router();
  *             schema:
  *               type: object
  *               properties:
- *                 status:
+ *                 message:
  *                   type: string
- *                   example: success
  *                 data:
  *                   $ref: '#/components/schemas/Pipeline'
  */
+pipelineRoutes.post('/', createPipeline);
 
 /**
  * @swagger
- * /api/v1/pipelines/{id}:
- *   get:
- *     summary: Get pipeline by ID
+ * /api/v1/pipeline/{id}/save:
+ *   put:
+ *     summary: Update a pipeline
  *     tags: [Pipelines]
- *     security:
- *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Pipeline ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               metadata:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Pipeline updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/Pipeline'
+ */
+pipelineRoutes.put('/:id/save', updatePipeline);
+
+/**
+ * @swagger
+ * /api/v1/pipeline/{id}/delete:
+ *   delete:
+ *     summary: Delete a pipeline
+ *     tags: [Pipelines]
  *     parameters:
  *       - in: path
  *         name: id
@@ -129,26 +154,124 @@ const pipelineRoutes = Router();
  *         description: Pipeline ID
  *     responses:
  *       200:
- *         description: Pipeline details
+ *         description: Pipeline deleted successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 status:
+ *                 message:
  *                   type: string
- *                   example: success
  *                 data:
  *                   $ref: '#/components/schemas/Pipeline'
- *       404:
- *         description: Pipeline not found
+ */
+pipelineRoutes.delete('/:id/delete', deletePipeline);
+
+/**
+ * @swagger
+ * /api/v1/pipeline:
+ *   get:
+ *     summary: Fetch all pipelines
+ *     tags: [Pipelines]
+ *     responses:
+ *       200:
+ *         description: Pipelines fetched successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Pipeline'
  */
-pipelineRoutes.get('/', (req: Request, res: Response) => {
-	res.send({ message: 'This is an example pipeline route' });
-});
+pipelineRoutes.get('/', fetchAllPipelines);
+
+/**
+ * @swagger
+ * /api/v1/pipeline/{id}:
+ *   get:
+ *     summary: Fetch a single pipeline
+ *     tags: [Pipelines]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Pipeline ID
+ *     responses:
+ *       200:
+ *         description: Pipeline fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/Pipeline'
+ */
+pipelineRoutes.get('/:id', fetchPipeline);
+
+/**
+ * @swagger
+ * /api/v1/pipeline/{id}/clone:
+ *   get:
+ *     summary: Clone a pipeline
+ *     tags: [Pipelines]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Pipeline ID
+ *     responses:
+ *       200:
+ *         description: Pipeline cloned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/Pipeline'
+ */
+pipelineRoutes.get('/:id/clone', clonePipeline);
+
+/**
+ * @swagger
+ * /api/v1/pipeline/{id}/run:
+ *   get:
+ *     summary: Execute a pipeline
+ *     tags: [Pipelines]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Pipeline ID
+ *     responses:
+ *       200:
+ *         description: Pipeline execution started
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/Pipeline'
+ */
+pipelineRoutes.get('/:id/run', executePipeline);
 
 export default pipelineRoutes;

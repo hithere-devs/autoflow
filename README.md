@@ -6,9 +6,17 @@
 - [x] Setting Up Middlewares and Routing
 - [x] Adding BullMQ Setup
 - [x] Swagger Setup
-- [ ] Writing starting tests
-- [ ] Documenting required APIs
-- [ ] Implement Authentication
+- [x] Implement Authentication
+- [x] Documenting required APIs
+- [x] Design the pipeline creation API
+- [ ] Design the Text Input Node
+- [ ] Implementing Text Input Node Worker
+- [ ] Design the AI Node
+- [ ] Implementing AI Node Worker
+- [ ] Integrate it with the pipeline, and implement running a pipeline
+- [ ] Start writing tests for pipeline excution
+- [ ] Implement APIs
+- [ ] Writing tests for APIs
 
 
 # CMDs
@@ -70,3 +78,5 @@ Server URL -        http://localhost:PORT/
       |-- swagger
       |-- v1
 ```
+
+# APIs

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import v1Routes from './v1';
+import { authRequired } from '@/middlewares/auth';
 
 const apiRouter = Router();
 

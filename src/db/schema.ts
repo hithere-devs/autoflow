@@ -21,6 +21,8 @@ export const pipelines = sqliteTable('pipelines', {
 	userId: text('user_id').references(() => users.id),
 	name: text('name').notNull(),
 	description: text('description'),
+	published: integer('published', { mode: 'boolean' }).default(false),
+	metadata: text('metadata', { mode: 'json' }),
 	createdAt: integer('created_at', { mode: 'timestamp' }).default(
 		sql`CURRENT_TIMESTAMP`
 	),

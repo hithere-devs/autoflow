@@ -6,12 +6,14 @@ async function bootstrap() {
 		const app = await createServer();
 
 		app.listen(config.port, () => {
-			console.log(`Server running on port ${config.port}`);
 			console.log(
-				`Bull Board running on http://localhost:${config.port}/admin/queues`
+				`Server running on port ${config.port} - http://localhost:${config.port}/api/v1`
 			);
 			console.log(
 				`Swagger running on http://localhost:${config.port}/api/docs`
+			);
+			console.log(
+				`Bull Board running on  http://localhost:${config.port}/admin/queues`
 			);
 		});
 	} catch (error) {
