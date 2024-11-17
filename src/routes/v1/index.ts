@@ -5,7 +5,7 @@ import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
 
 const v1Router = Router();
 
-v1Router.use('/pipeline', authRequired, pipelineRoutes);
+v1Router.use('/pipeline', pipelineRoutes);
 
 v1Router.get('/login', ClerkExpressRequireAuth(), (req, res) => {
 	// @ts-ignore

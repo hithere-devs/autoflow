@@ -22,7 +22,7 @@ export class HttpError extends Error {
 		this.status = false;
 		this.statusCode = statusCode;
 		this.errors = errors;
-		this.name = this.constructor.name;
+		this.message = message;
 	}
 }
 

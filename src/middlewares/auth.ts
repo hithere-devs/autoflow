@@ -2,6 +2,8 @@ import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
 import { getAuth, verifyToken } from '@clerk/express';
 import { Request, Response, NextFunction } from 'express';
 
+// Will Setup Auth Later Cause This is a problem at this moment
+// Setting up clerk with both next and nodejs is not working, cause If I want to leverage these apis somewhere else in future anyways i would need to setup the authentication seperately for that case! So will figure this out later.
 export const authRequired = async (
 	req: Request,
 	res: Response,
