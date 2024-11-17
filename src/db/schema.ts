@@ -1,10 +1,15 @@
 // src/db/schema.ts
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import {
+	sqliteTable,
+	text,
+	integer,
+	real,
+	unique,
+} from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 export const users = sqliteTable('users', {
 	id: text('user_id').primaryKey(),
-	username: text('username').notNull().unique(),
 	email: text('email').notNull().unique(),
 	passwordHash: text('password_hash').notNull(),
 	// subscriptionId: text('subscription_id').references(() => subscriptions.id),
@@ -16,18 +21,26 @@ export const users = sqliteTable('users', {
 	),
 });
 
-export const pipelines = sqliteTable('pipelines', {
-	id: text('pipeline_id').primaryKey(),
-	userId: text('user_id').references(() => users.id),
-	name: text('name').notNull(),
-	description: text('description'),
-	createdAt: integer('created_at', { mode: 'timestamp' }).default(
-		sql`CURRENT_TIMESTAMP`
-	),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).default(
-		sql`CURRENT_TIMESTAMP`
-	),
-});
+export const pipelines = sqliteTable(
+	'pipelines',
+	{
+		id: text('pipeline_id').primaryKey(),
+		userId: text('user_id').references(() => users.id),
+		name: text('name').notNull(),
+		description: text('description'),
+		published: integer('published', { mode: 'boolean' }).default(false),
+		metadata: text('metadata', { mode: 'json' }),
+		createdAt: integer('created_at', { mode: 'timestamp' }).default(
+			sql`CURRENT_TIMESTAMP`
+		),
+		updatedAt: integer('updated_at', { mode: 'timestamp' }).default(
+			sql`CURRENT_TIMESTAMP`
+		),
+	},
+	(t) => ({
+		unique: unique('pipeline_with_name_exists').on(t.userId, t.name),
+	})
+);
 
 export const nodeTypes = sqliteTable('node_types', {
 	id: text('node_type_id').primaryKey(),

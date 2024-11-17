@@ -1,13 +1,16 @@
 // src/middleware/error-handler.ts
+import { HttpError } from '@/utils/httpResponse';
 import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 
 export class ApiError extends Error {
 	constructor(
+		public status: boolean,
 		public statusCode: number,
 		message: string,
 		public errors?: any
 	) {
 		super(message);
+		this.status = false;
 		this.name = 'ApiError';
 	}
 }
@@ -20,9 +23,9 @@ export const errorHandler: ErrorRequestHandler = (
 ): void => {
 	console.error(err);
 
-	if (err instanceof ApiError) {
+	if (err instanceof ApiError || err instanceof HttpError) {
 		res.status(err.statusCode).json({
-			status: 'error',
+			status: err.status,
 			message: err.message,
 			errors: err.errors || undefined,
 		});

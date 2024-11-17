@@ -8,19 +8,34 @@ import { setupBullBoard } from '@/config/bull-board';
 import { errorHandler } from '@/middlewares/error-handler';
 import { swaggerRoutes } from '@/routes/swagger';
 import apiRouter from '@/routes';
+import { clerkMiddleware } from '@clerk/express';
+import { authRequired } from './middlewares/auth';
 
 export async function createServer() {
 	const app = express();
 
 	// Middleware
 	app.use(helmet());
-	app.use(cors());
+	app.use(
+		cors({
+			origin: ['http://localhost:3000'], // Allow Next.js frontend
+			credentials: true, // Required for cookies/auth headers
+			methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+			allowedHeaders: ['Content-Type', 'Authorization'],
+		})
+	);
 	app.use(express.json());
 	app.use('/api/docs', swaggerRoutes);
-
 	// Setup Bull Board
 	const bullBoardAdapter = setupBullBoard();
 	app.use('/admin/queues', bullBoardAdapter.getRouter());
+
+	// auth
+	app.use(
+		clerkMiddleware({
+			authorizedParties: ['http://localhost:3000'],
+		})
+	);
 
 	// Initialize test queue worker
 	const testWorker = createTestWorker();
