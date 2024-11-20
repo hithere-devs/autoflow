@@ -1,7 +1,7 @@
 // src/queue/pipeline/pipeline.worker.ts
 import { Job } from 'bullmq';
 import { BaseWorker } from '../base/worker.base';
-import { PipelineExecutionData, NodeExecutionResult } from './types';
+import { PipelineExecutionData } from './types';
 import { db } from '@/db';
 import { ApiError } from '@/middlewares/error-handler';
 import { tryWorker } from '@/utils/queue';

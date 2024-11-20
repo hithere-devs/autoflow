@@ -9,10 +9,11 @@
 - [x] Implement Authentication
 - [x] Documenting required APIs
 - [x] Design the pipeline creation API
-- [ ] Design the Text Input Node
-- [ ] Implementing Text Input Node Worker
+- [x] Design the Text Input Node
 - [ ] Design the AI Node
+- [ ] Let's Save both the nodes and node_types and some example edges in the db before implementing the workers
 - [ ] Implementing AI Node Worker
+- [ ] Implementing Text Input Node Worker
 - [ ] Integrate it with the pipeline, and implement running a pipeline
 - [ ] Start writing tests for pipeline excution
 - [ ] Implement APIs

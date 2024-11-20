@@ -5,9 +5,3 @@ export interface PipelineExecutionData {
 	currentNodeId: string;
 	input?: Record<string, any>;
 }
-
-export interface NodeExecutionResult {
-	success: boolean;
-	output: Record<string, any>;
-	error?: string;
-}
