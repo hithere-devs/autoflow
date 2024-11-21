@@ -44,13 +44,16 @@ export async function createServer() {
 	// Test Endpoint for Queue
 	app.get('/test-job', async (req, res) => {
 		const job = await aiNodeQueue.addProcessing({
-			nodeId: 'test',
-			input: {
-				model: 'gpt-3.5',
-				prompt: 'DEFINE YOUR PROMPT',
-				system: 'DEFINE AI SYSTEM',
-			},
+			nodeId: 'ai-node-1',
 		});
+		// const job = await textNodeQueue.addProcessing({
+		// 	nodeId: 'text-node-1',
+		// 	input: {
+		// 		name: 'Azhar Malik',
+		// 		company: 'Autoflow',
+		// 		role: 'Software Engineer',
+		// 	},
+		// });
 		res.json({ jobId: job.id });
 	});
 

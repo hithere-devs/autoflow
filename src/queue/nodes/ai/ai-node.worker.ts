@@ -18,7 +18,6 @@ export class AINodeWorker extends BaseWorker<
 				job: Job<AINodeData>
 			): Promise<NodeExecutionResult<AINodeOutput>> => {
 				const { nodeId, input } = job.data;
-				console.log('Processing AI node:', nodeId, 'with input:', input);
 
 				const node = await db.query.nodes.findFirst({
 					where: eq(nodes.id, nodeId),
@@ -29,23 +28,20 @@ export class AINodeWorker extends BaseWorker<
 				}
 
 				// Validate input
-				if (!input.prompt) {
+				if (!node.configuration) {
 					throw new Error('Prompt is required for AI processing');
 				}
 
-				// Implement AI node specific processing
-				const data = await generateAINodeData(input);
+				if (input) {
+					node.configuration = input as unknown as Record<string, string>;
+				}
 
-				const result: NodeExecutionResult<AINodeOutput> = {
+				const output = await generateAINodeData(node.configuration);
+
+				return {
 					success: true,
-					output: {
-						text: data,
-						tokenCount: input.prompt.length,
-					},
-				};
-
-				console.log('AI node result:', result);
-				return result;
+					output,
+				} as NodeExecutionResult<AINodeOutput>;
 			}
 		);
 	}

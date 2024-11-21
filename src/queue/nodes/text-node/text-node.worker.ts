@@ -16,7 +16,8 @@ export class TextNodeWorker extends BaseWorker<
 			async (
 				job: Job<TextNodeData>
 			): Promise<NodeExecutionResult<TextNodeOutput>> => {
-				const { nodeId, input } = job.data;
+				const { nodeId } = job.data;
+				let input = job.data.input as Record<any, any>;
 				console.log('Processing text node:', nodeId, 'with input:', input);
 
 				const node = await db.query.nodes.findFirst({
@@ -27,6 +28,12 @@ export class TextNodeWorker extends BaseWorker<
 					throw new Error(`Text node ${nodeId} not found`);
 				}
 
+				if (!input) {
+					input = JSON.parse(JSON.stringify(node.configuration)).variables;
+				}
+
+				console.log(input);
+
 				const template = node.configuration?.text as string;
 				if (!template) {
 					throw new Error(`Text template not found in node ${nodeId}`);
@@ -34,6 +41,7 @@ export class TextNodeWorker extends BaseWorker<
 
 				const variables =
 					template.match(/\{\{(\w+)\}\}/g)?.map((v) => v.slice(2, -2)) || [];
+
 				const missingVars = variables.filter((v) => !(v in input));
 
 				if (missingVars.length > 0) {

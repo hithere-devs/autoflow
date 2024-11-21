@@ -3,9 +3,10 @@ import { NextFunction, Request, Response } from 'express';
 import { db } from '@/db';
 import { Success, HttpError } from '@/utils/httpResponse';
 import { createId } from '@paralleldrive/cuid2';
-import { pipelines } from '@/db/schema';
+import { executions, nodeEdges, nodeTypes, pipelines } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { and } from 'drizzle-orm';
+import { pipelineQueue } from '@/queue';
 
 const getAuthUserId = () => 'poiuytrewq';
 
@@ -123,7 +124,7 @@ export const fetchAllPipelines = async (
 		const data = await db
 			.select()
 			.from(pipelines)
-			.where(eq(pipelines.userId, 'poiuytrewa'));
+			.where(eq(pipelines.userId, userId));
 
 		if (data.length <= 0) {
 			throw new Error('No Pipelines Found');
@@ -314,28 +315,55 @@ export const clonePipeline = async (req: Request, res: Response) => {
 	// }
 };
 
-export const executePipeline = async (req: Request, res: Response) => {
-	// try {
-	// 	const { id } = req.params;
-	// 	const userId = req.auth.userId;
-	// 	const pipeline = await db.query.pipelines.findFirst({
-	// 		where: (pipelines, { eq }) =>
-	// 			eq(pipelines.id, id) && eq(pipelines.userId, userId),
-	// 	});
-	// 	if (!pipeline) {
-	// 		return res.status(404).json(new HttpError('Pipeline not found'));
-	// 	}
-	// 	// Add logic to execute the pipeline
-	// 	// For now, just return a success message
-	// 	res
-	// 		.status(200)
-	// 		.json(
-	// 			new Success(
-	// 				`Pipeline - ${pipeline.name} Execution in Progress`,
-	// 				pipeline
-	// 			)
-	// 		);
-	// } catch (error) {
-	// 	res.status(500).json(new HttpError('Failed to execute pipeline', error));
-	// }
+export const executePipeline = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+) => {
+	try {
+		const { id } = req.params;
+		const userId = getAuthUserId();
+
+		// fetch pipeline
+		const pipeline = await db.query.pipelines.findFirst({
+			where: () => and(eq(pipelines.id, id), eq(pipelines.userId, userId)),
+			// with: {
+			// 	nodes: true,
+			// 	nodeEdges: true,
+			// },
+		});
+
+		// check if pipeline not found
+		if (!pipeline) {
+			throw new HttpError('Pipeline not found');
+		}
+
+		// Add logic to execute the pipeline
+
+		// create an execution entry
+		const execution = db
+			.insert(executions)
+			.values({
+				id: createId(),
+				pipelineId: pipeline.id,
+				status: 'pending',
+				triggeredBy: userId,
+			})
+			.returning()
+			.get();
+
+		// send this execution Id and pipeline to the queue for processing
+		pipelineQueue.addProcessing({
+			executionId: execution.id,
+			pipelineId: pipeline.id,
+		});
+
+		const response = new Success(
+			`Pipeline - ${pipeline.name} Execution in Progress`,
+			execution
+		);
+		res.status(response.statusCode).json(response);
+	} catch (error) {
+		next(error);
+	}
 };

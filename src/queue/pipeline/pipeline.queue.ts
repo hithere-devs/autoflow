@@ -7,7 +7,7 @@ export class PipelineQueue extends BaseQueue {
 		super('pipeline-execution');
 	}
 
-	async addPipelineExecution(data: PipelineExecutionData) {
+	async addProcessing(data: PipelineExecutionData) {
 		return this.add('execute-pipeline', data, {
 			attempts: 3,
 			backoff: {

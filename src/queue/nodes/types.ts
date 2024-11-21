@@ -6,7 +6,7 @@ export interface NodeExecutionResult<T = Record<string, any>> {
 
 export interface TextNodeData {
 	nodeId: string;
-	input: Record<any, any>;
+	input?: Record<any, any>;
 }
 
 export interface TextNodeOutput {
@@ -21,7 +21,7 @@ export interface AIInput {
 
 export interface AINodeData {
 	nodeId: string;
-	input: AIInput;
+	input?: AIInput;
 }
 
 export interface AINodeOutput {

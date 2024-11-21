@@ -1,4 +1,4 @@
-import { BaseQueue } from '@/queue';
+import { BaseQueue } from '@/queue/base/queue.base';
 import { TextNodeData } from '../types';
 
 export class TextNodeQueue extends BaseQueue<TextNodeData> {

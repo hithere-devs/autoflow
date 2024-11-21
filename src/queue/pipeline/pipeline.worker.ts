@@ -3,73 +3,50 @@ import { Job } from 'bullmq';
 import { BaseWorker } from '../base/worker.base';
 import { PipelineExecutionData } from './types';
 import { db } from '@/db';
-import { ApiError } from '@/middlewares/error-handler';
-import { tryWorker } from '@/utils/queue';
+import { eq } from 'drizzle-orm';
+import { pipelines } from '@/db/schema';
+import { getQueueForNodeType } from '@/utils/constants';
 
 export class PipelineWorker extends BaseWorker<PipelineExecutionData> {
 	constructor() {
 		super('pipeline-execution', async (job: Job<PipelineExecutionData>) => {
-			const { pipelineId, executionId, currentNodeId, input } = job.data;
-
-			tryWorker(() => {
-				// Get the edge details of the first node
-				// Get first node details of the pipeline
-				// Get node's queue name based on node type
-				// Add job to node's queue with the exitqueue name
-			}, 'pipeline-execution');
+			const { pipelineId, executionId } = job.data;
 
 			try {
-				// 	// Get current node details
-				// 	const node = await db.query.nodes.findFirst({
-				// 		where: (nodes, { eq }) => eq(nodes.id, currentNodeId),
-				// 		with: {
-				// 			nodeType: true,
-				// 		},
-				// 	});
-				// 	if (!node) {
-				// 		throw new ApiError(404, `Node ${currentNodeId} not found`);
-				// 	}
-				// 	// Get node's worker queue
-				// 	const nodeQueue = this.getNodeQueue(node.nodeType.name);
-				// 	// Add job to node queue
-				// 	const nodeResult = await nodeQueue.add('process', {
-				// 		nodeId: currentNodeId,
-				// 		executionId,
-				// 		input,
-				// 	});
-				// 	// Get next node from edges
-				// 	const edge = await db.query.nodeEdges.findFirst({
-				// 		where: (edges, { eq }) => eq(edges.sourceNodeId, currentNodeId),
-				// 	});
-				// 	if (!edge) {
-				// 		// Pipeline complete
-				// 		return nodeResult;
-				// 	}
-				// 	// Continue pipeline with next node
-				// 	return await pipelineQueue.addPipelineExecution({
-				// 		pipelineId,
-				// 		executionId,
-				// 		currentNodeId: edge.targetNodeId,
-				// 		input: nodeResult.output,
-				// 	});
+				// we have the pipeline, nodes, and node_types
+				const pipeline = await db.query.pipelines.findFirst({
+					where: eq(pipelines.id, pipelineId),
+					with: {
+						nodes: true,
+						nodeEdges: true,
+					},
+				});
+				console.log(pipeline);
+
+				// we have the pipeline, nodes and node_edges
+				// based on the node and nodeEdges take out the first node and nextNode and then start a chain here where the firstNode is executed and then the exitQueue is the nextNode's Queue and so on based on the node_type_id which is mapped to the queue names of the respective nodes
+
+				// find the position 0 node
+				const firstNode = pipeline?.nodes.find((n) => n.position === 0);
+
+				if (!firstNode || !firstNode.nodeTypeId) {
+					throw new Error('Pipeline does not have a starting node');
+				}
+
+				console.log(firstNode.nodeTypeId);
+
+				// map the queue to the node_type_id
+				const nodeQueue = getQueueForNodeType(firstNode.nodeTypeId);
+
+				nodeQueue.addProcessing({
+					nodeId: firstNode.id,
+				});
 			} catch (error) {
 				console.error(`Pipeline execution failed:`, error);
 				throw error;
 			}
 		});
 	}
-
-	// private getNodeQueue(nodeType: string) {
-	// 	// Implement node queue factory based on type
-	// 	switch (nodeType) {
-	// 		case 'ai':
-	// 			return aiNodeQueue;
-	// 		case 'script':
-	// 			return scriptNodeQueue;
-	// 		default:
-	// 			throw new Error(`Unknown node type: ${nodeType}`);
-	// 	}
-	// }
 }
 
 export const pipelineWorker = new PipelineWorker();
