@@ -1,12 +1,7 @@
 // src/db/schema.ts
-import {
-	sqliteTable,
-	text,
-	integer,
-	real,
-	unique,
-} from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
+import { relations } from 'drizzle-orm';
 
 export const users = sqliteTable('users', {
 	id: text('user_id').primaryKey(),
@@ -56,7 +51,7 @@ export const nodeTypes = sqliteTable('node_types', {
 			name: string;
 			type: string;
 		}>;
-		configSchema: Record<string, unknown>;
+		configSchema: Record<string, string>;
 	}>(),
 	createdAt: integer('created_at', { mode: 'timestamp' }).default(
 		sql`CURRENT_TIMESTAMP`
@@ -67,8 +62,9 @@ export const nodes = sqliteTable('nodes', {
 	id: text('node_id').primaryKey(),
 	pipelineId: text('pipeline_id').references(() => pipelines.id),
 	nodeTypeId: text('node_type_id').references(() => nodeTypes.id),
+	position: integer('position').notNull().default(0),
 	configuration: text('configuration', { mode: 'json' }).$type<
-		Record<string, unknown>
+		Record<string, string>
 	>(),
 	createdAt: integer('created_at', { mode: 'timestamp' }).default(
 		sql`CURRENT_TIMESTAMP`
@@ -90,12 +86,16 @@ export const nodeEdges = sqliteTable('node_edges', {
 
 export const executions = sqliteTable('executions', {
 	id: text('execution_id').primaryKey(),
-	pipelineId: text('pipeline_id').references(() => pipelines.id),
+	pipelineId: text('pipeline_id')
+		.references(() => pipelines.id)
+		.notNull(),
 	status: text('status', {
 		enum: ['pending', 'running', 'completed', 'failed'],
 	}).notNull(),
 	triggeredBy: text('triggered_by').notNull(),
-	startedAt: integer('started_at', { mode: 'timestamp' }),
+	startedAt: integer('started_at', { mode: 'timestamp' }).default(
+		sql`CURRENT_TIMESTAMP`
+	),
 	completedAt: integer('completed_at', { mode: 'timestamp' }),
 	log: text('log'),
 });
@@ -110,6 +110,33 @@ export const executionLogs = sqliteTable('execution_logs', {
 		sql`CURRENT_TIMESTAMP`
 	),
 });
+
+export const pipelinesRelations = relations(pipelines, ({ many }) => ({
+	nodes: many(nodes),
+	nodeEdges: many(nodeEdges),
+	executions: many(executions),
+}));
+
+export const nodesRelations = relations(nodes, ({ one }) => ({
+	pipeline: one(pipelines, {
+		fields: [nodes.pipelineId],
+		references: [pipelines.id],
+	}),
+}));
+
+export const nodeEdgesRelations = relations(nodeEdges, ({ one }) => ({
+	pipeline: one(pipelines, {
+		fields: [nodeEdges.pipelineId],
+		references: [pipelines.id],
+	}),
+}));
+
+export const executionsRelations = relations(executions, ({ one }) => ({
+	pipeline: one(pipelines, {
+		fields: [executions.pipelineId],
+		references: [pipelines.id],
+	}),
+}));
 
 export type User = typeof users.$inferSelect;
 export type Pipeline = typeof pipelines.$inferSelect;

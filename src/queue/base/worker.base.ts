@@ -2,10 +2,10 @@
 import { Worker, WorkerOptions, Job } from 'bullmq';
 import { config } from '@/config';
 
-export abstract class BaseWorker<T = any> extends Worker {
+export abstract class BaseWorker<TData = any, TResult = any> extends Worker {
 	constructor(
 		queueName: string,
-		processor: (job: Job<T>) => Promise<any>,
+		processor: (job: Job<TData>) => Promise<TResult>,
 		options?: WorkerOptions
 	) {
 		super(queueName, processor, {

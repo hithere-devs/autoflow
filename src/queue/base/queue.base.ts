@@ -1,7 +1,7 @@
-import { Queue, QueueOptions } from 'bullmq';
+import { Queue, QueueOptions, JobsOptions } from 'bullmq';
 import { config } from '@/config';
 
-export abstract class BaseQueue extends Queue {
+export abstract class BaseQueue<TData = any> extends Queue<TData> {
 	constructor(name: string, options?: QueueOptions) {
 		super(name, {
 			connection: {
@@ -11,4 +11,5 @@ export abstract class BaseQueue extends Queue {
 			...options,
 		});
 	}
+	abstract addProcessing(data: TData, options?: JobsOptions): Promise<any>;
 }

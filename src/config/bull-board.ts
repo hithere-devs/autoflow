@@ -2,18 +2,14 @@
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
-import { pipelineQueue, testQueue, aiNodeQueue } from '@/queue';
+import { queueInitializer } from '@/queue/nodes/queue.initializer';
 
 export function setupBullBoard() {
 	const serverAdapter = new ExpressAdapter();
 	serverAdapter.setBasePath('/admin/queues');
 
 	createBullBoard({
-		queues: [
-			new BullMQAdapter(testQueue),
-			new BullMQAdapter(pipelineQueue),
-			new BullMQAdapter(aiNodeQueue),
-		],
+		queues: queueInitializer().map((queue) => new BullMQAdapter(queue)),
 		serverAdapter,
 	});
 

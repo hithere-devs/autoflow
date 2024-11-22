@@ -1,22 +1,49 @@
+// src/queue/nodes/ai/ai-node.worker.ts
 import { Job } from 'bullmq';
 import { BaseWorker } from '@/queue';
-import { NodeExecutionResult } from '@/queue/pipeline/types';
+import { db } from '@/db';
+import { nodes } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { AINodeData, AINodeOutput, NodeExecutionResult } from '../types';
+import { generateAINodeData } from '@/lib/ai';
 
-export class AINodeWorker extends BaseWorker {
+export class AINodeWorker extends BaseWorker<
+	AINodeData,
+	NodeExecutionResult<AINodeOutput>
+> {
 	constructor() {
-		super('ai-node', async (job: Job) => {
-			const { nodeId, input } = job.data;
+		super(
+			'ai-node',
+			async (
+				job: Job<AINodeData>
+			): Promise<NodeExecutionResult<AINodeOutput>> => {
+				const { nodeId, input } = job.data;
 
-			// Implement AI node specific processing
-			const result: NodeExecutionResult = {
-				success: true,
-				output: {
-					// Process AI node logic here
-				},
-			};
+				const node = await db.query.nodes.findFirst({
+					where: eq(nodes.id, nodeId),
+				});
 
-			return result;
-		});
+				if (!node) {
+					throw new Error(`AI node - ${nodeId} not found`);
+				}
+
+				// Validate input
+				if (!node.configuration) {
+					throw new Error('Prompt is required for AI processing');
+				}
+
+				if (input) {
+					node.configuration = input as unknown as Record<string, string>;
+				}
+
+				const output = await generateAINodeData(node.configuration);
+
+				return {
+					success: true,
+					output,
+				} as NodeExecutionResult<AINodeOutput>;
+			}
+		);
 	}
 }
 
