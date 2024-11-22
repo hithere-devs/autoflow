@@ -11,4 +11,5 @@ export abstract class BaseQueue<TData = any> extends Queue<TData> {
 			...options,
 		});
 	}
+	abstract addProcessing(data: TData, options?: JobsOptions): Promise<any>;
 }
