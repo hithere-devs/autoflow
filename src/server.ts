@@ -21,7 +21,7 @@ export async function createServer() {
 	// CORS
 	app.use(
 		cors({
-			origin: ['http://localhost:3000'], // Allow Next.js frontend
+			origin: [`${process.env.CLIENT_URL}`], // Allow frontend urls
 			credentials: true, // Required for cookies/auth headers
 			methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 			allowedHeaders: ['Content-Type', 'Authorization'],

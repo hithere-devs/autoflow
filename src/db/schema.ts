@@ -111,7 +111,15 @@ export const executionLogs = sqliteTable('execution_logs', {
 	),
 });
 
-export const pipelinesRelations = relations(pipelines, ({ many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
+	pipelines: many(pipelines),
+}));
+
+export const pipelinesRelations = relations(pipelines, ({ one, many }) => ({
+	user: one(users, {
+		fields: [pipelines.userId],
+		references: [users.id],
+	}),
 	nodes: many(nodes),
 	nodeEdges: many(nodeEdges),
 	executions: many(executions),

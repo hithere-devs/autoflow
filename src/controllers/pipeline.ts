@@ -120,11 +120,13 @@ export const fetchAllPipelines = async (
 		// get user id from req
 		const userId = getAuthUserId();
 
-		// fetch all pipelines
-		const data = await db
-			.select()
-			.from(pipelines)
-			.where(eq(pipelines.userId, userId));
+		// fetch all pipelines with userdata as well
+		const data = await db.query.pipelines.findMany({
+			where: () => eq(pipelines.userId, userId),
+			with: {
+				user: true,
+			},
+		});
 
 		if (data.length <= 0) {
 			throw new Error('No Pipelines Found');
@@ -132,6 +134,7 @@ export const fetchAllPipelines = async (
 
 		// response
 		const response = new Success('Pipelines Fetched Successfully', data);
+		// throw new Error('No Pipelines Found');
 		// example success response
 		/*
         {
@@ -222,19 +225,23 @@ export const fetchPipeline = async (
 		const userId = getAuthUserId();
 
 		// fetch pipeline
-		const pipeline = await db
-			.select()
-			.from(pipelines)
-			.where(and(eq(pipelines.id, id), eq(pipelines.userId, userId)));
+		const pipeline = await db.query.pipelines.findFirst({
+			where: () => and(eq(pipelines.id, id), eq(pipelines.userId, userId)),
+			with: {
+				user: true,
+				nodes: true,
+				nodeEdges: true,
+			},
+		});
 
 		// check if pipeline not found
-		if (pipeline.length <= 0) {
+		if (!pipeline) {
 			throw new Error('Pipeline not found');
 		}
 
 		// response
 		const response = new Success(
-			`Pipeline - ${pipeline[0].name} Fetched Successfully`,
+			`Pipeline - ${pipeline.name} Fetched Successfully`,
 			pipeline
 		);
 		// example success response
