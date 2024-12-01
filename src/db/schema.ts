@@ -1,47 +1,50 @@
 // src/db/schema.ts
-import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
+import {
+	pgTable,
+	text,
+	integer,
+	boolean,
+	jsonb,
+	timestamp,
+	uniqueIndex,
+	varchar,
+} from 'drizzle-orm/pg-core';
+// import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
 
-export const users = sqliteTable('users', {
+export const users = pgTable('users', {
 	id: text('user_id').primaryKey(),
 	email: text('email').notNull().unique(),
 	passwordHash: text('password_hash').notNull(),
-	// subscriptionId: text('subscription_id').references(() => subscriptions.id),
-	createdAt: integer('created_at', { mode: 'timestamp' }).default(
-		sql`CURRENT_TIMESTAMP`
-	),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).default(
-		sql`CURRENT_TIMESTAMP`
-	),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const pipelines = sqliteTable(
+export const pipelines = pgTable(
 	'pipelines',
 	{
 		id: text('pipeline_id').primaryKey(),
 		userId: text('user_id').references(() => users.id),
 		name: text('name').notNull(),
 		description: text('description'),
-		published: integer('published', { mode: 'boolean' }).default(false),
-		metadata: text('metadata', { mode: 'json' }),
-		createdAt: integer('created_at', { mode: 'timestamp' }).default(
-			sql`CURRENT_TIMESTAMP`
-		),
-		updatedAt: integer('updated_at', { mode: 'timestamp' }).default(
-			sql`CURRENT_TIMESTAMP`
-		),
+		published: boolean('published').default(false),
+		metadata: jsonb('metadata'),
+		createdAt: timestamp('created_at').defaultNow(),
+		updatedAt: timestamp('updated_at').defaultNow(),
 	},
-	(t) => ({
-		unique: unique('pipeline_with_name_exists').on(t.userId, t.name),
+	(table) => ({
+		nameUserIdx: uniqueIndex('pipeline_with_name_exists').on(
+			table.userId,
+			table.name
+		),
 	})
 );
 
-export const nodeTypes = sqliteTable('node_types', {
+export const nodeTypes = pgTable('node_types', {
 	id: text('node_type_id').primaryKey(),
 	name: text('name').notNull(),
 	description: text('description'),
-	metadata: text('metadata', { mode: 'json' }).$type<{
+	metadata: jsonb('metadata').$type<{
 		inputs: Array<{
 			name: string;
 			type: string;
@@ -53,64 +56,53 @@ export const nodeTypes = sqliteTable('node_types', {
 		}>;
 		configSchema: Record<string, string>;
 	}>(),
-	createdAt: integer('created_at', { mode: 'timestamp' }).default(
-		sql`CURRENT_TIMESTAMP`
-	),
+	createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const nodes = sqliteTable('nodes', {
+export const nodes = pgTable('nodes', {
 	id: text('node_id').primaryKey(),
 	pipelineId: text('pipeline_id').references(() => pipelines.id),
 	nodeTypeId: text('node_type_id').references(() => nodeTypes.id),
 	position: integer('position').notNull().default(0),
-	configuration: text('configuration', { mode: 'json' }).$type<
-		Record<string, string>
-	>(),
-	createdAt: integer('created_at', { mode: 'timestamp' }).default(
-		sql`CURRENT_TIMESTAMP`
-	),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).default(
-		sql`CURRENT_TIMESTAMP`
-	),
+	configuration: jsonb('configuration').$type<Record<string, string>>(),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const nodeEdges = sqliteTable('node_edges', {
+export const nodeEdges = pgTable('node_edges', {
 	id: text('edge_id').primaryKey(),
 	sourceNodeId: text('source_node_id').references(() => nodes.id),
 	targetNodeId: text('target_node_id').references(() => nodes.id),
 	pipelineId: text('pipeline_id').references(() => pipelines.id),
-	createdAt: integer('created_at', { mode: 'timestamp' }).default(
-		sql`CURRENT_TIMESTAMP`
-	),
+	createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const executions = sqliteTable('executions', {
+export const executions = pgTable('executions', {
 	id: text('execution_id').primaryKey(),
 	pipelineId: text('pipeline_id')
 		.references(() => pipelines.id)
 		.notNull(),
-	status: text('status', {
+	status: varchar('status', {
 		enum: ['pending', 'running', 'completed', 'failed'],
 	}).notNull(),
 	triggeredBy: text('triggered_by').notNull(),
-	startedAt: integer('started_at', { mode: 'timestamp' }).default(
-		sql`CURRENT_TIMESTAMP`
-	),
-	completedAt: integer('completed_at', { mode: 'timestamp' }),
+	startedAt: timestamp('started_at').defaultNow(),
+	completedAt: timestamp('completed_at'),
 	log: text('log'),
 });
 
-export const executionLogs = sqliteTable('execution_logs', {
+export const executionLogs = pgTable('execution_logs', {
 	id: text('log_id').primaryKey(),
 	executionId: text('execution_id').references(() => executions.id),
 	nodeId: text('node_id').references(() => nodes.id),
-	status: text('status', { enum: ['pending', 'success', 'error'] }).notNull(),
+	status: varchar('status', {
+		enum: ['pending', 'success', 'error'],
+	}).notNull(),
 	message: text('message'),
-	createdAt: integer('created_at', { mode: 'timestamp' }).default(
-		sql`CURRENT_TIMESTAMP`
-	),
+	createdAt: timestamp('created_at').defaultNow(),
 });
 
+// Relations remain the same
 export const usersRelations = relations(users, ({ many }) => ({
 	pipelines: many(pipelines),
 }));

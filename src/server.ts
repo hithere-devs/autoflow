@@ -11,6 +11,7 @@ import { clerkMiddleware } from '@clerk/express';
 import { authRequired } from './middlewares/auth';
 import { textNodeQueue } from './queue/nodes/text-node/text-node.queue';
 import { workerInitializer } from './queue/nodes/worker.initializer';
+import { db } from './db';
 
 export async function createServer() {
 	const app = express();
@@ -72,9 +73,13 @@ export async function createServer() {
 		console.log('Running server checks...');
 		// Add server checks here
 		// e.g. check if database connection is established
+
 		console.log('Server checks passed!');
 		next();
 	};
+	console.log(process.env.DATABASE_URL);
+	const result = await db.execute('select 1');
+	console.log(result);
 
 	// Health Check Enpoint
 	app.get('/admin', serverChecks, async (req, res) => {
