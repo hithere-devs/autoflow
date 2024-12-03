@@ -16,7 +16,9 @@
 		"baseUrl": "src",
 		"paths": {
 			"@/*": ["./*"]
-		}
+		},
+		"typeRoots": ["./node_modules/@types", "./src/types"],
+		"types": ["node", "express"]
 	},
 	"include": ["src/**/*", "src/config.ts"],
 	"exclude": ["node_modules", "dist", "**/*.test.ts"]

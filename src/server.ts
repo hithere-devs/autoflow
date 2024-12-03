@@ -2,16 +2,13 @@ import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { aiNodeQueue, createTestWorker, testQueue } from '@/queue';
+import { aiNodeQueue } from '@/queue';
 import { setupBullBoard } from '@/config/bull-board';
 import { errorHandler } from '@/middlewares/error-handler';
 import { swaggerRoutes } from '@/routes/swagger';
 import apiRouter from '@/routes';
 import { clerkMiddleware } from '@clerk/express';
-import { authRequired } from './middlewares/auth';
-import { textNodeQueue } from './queue/nodes/text-node/text-node.queue';
 import { workerInitializer } from './queue/nodes/worker.initializer';
-import { db } from './db';
 
 export async function createServer() {
 	const app = express();
@@ -77,9 +74,6 @@ export async function createServer() {
 		console.log('Server checks passed!');
 		next();
 	};
-	console.log(process.env.DATABASE_URL);
-	const result = await db.execute('select 1');
-	console.log(result);
 
 	// Health Check Enpoint
 	app.get('/admin', serverChecks, async (req, res) => {
