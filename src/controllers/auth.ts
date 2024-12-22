@@ -1,36 +1,44 @@
-import { db } from '@/db';
-import { Success, HttpError } from '@/utils/httpResponse';
-import { createId } from '@paralleldrive/cuid2';
-import { getGoogleClient } from '@/lib/auth';
-import { TokenPayload } from 'google-auth-library';
-import jwt from 'jsonwebtoken';
-import { Request, Response, NextFunction } from 'express';
-const { GOOGLE_CLIENT_ID, SECRET } = process.env;
+// src/controllers/auth.controller.ts
+import { AuthService } from '@/services/auth';
+import { Request, Response } from 'express';
 
-const client = getGoogleClient();
-
-export const login = async (
-	req: Request,
-	res: Response,
-	next: NextFunction
-) => {
-	try {
-		console.log(req.headers.authorization);
-		const token = req.headers.authorization as string;
-		const ticket = await client.verifyIdToken({
-			idToken: token.slice(7),
-			audience: GOOGLE_CLIENT_ID as string,
-		});
-		const payload = ticket.getPayload() as TokenPayload;
-		console.log(payload);
-		if (payload.aud != GOOGLE_CLIENT_ID) {
-			throw new HttpError('Unauthorized');
-		}
-		const { email, name } = payload;
-		const authToken = jwt.sign({ email, name }, SECRET as string);
-		const response = new Success('Login Successful', { authToken });
-		res.status(response.statusCode).json(response);
-	} catch (error: any) {
-		next(error);
+export class AuthController {
+	static async getGoogleAuthUrl(req: Request, res: Response) {
+		const url = AuthService.generateAuthUrl();
+		res.json({ url });
 	}
-};
+
+	static async handleGoogleCallback(req: Request, res: Response) {
+		try {
+			const { code } = req.query;
+			if (!code || typeof code !== 'string') {
+				throw new Error('Authorization code required');
+			}
+			console.log('Code:', code);
+			const googleUser = await AuthService.getGoogleUser(code);
+			const user = await AuthService.findOrCreateUser(googleUser);
+			const { accessToken, refreshToken } = await AuthService.createTokens(
+				user.id
+			);
+
+			res.cookie('access_token', accessToken, {
+				httpOnly: true,
+				secure: process.env.NODE_ENV === 'production',
+				sameSite: 'lax',
+				maxAge: 15 * 60 * 1000, // 15 minutes
+			});
+
+			res.cookie('refresh_token', refreshToken, {
+				httpOnly: true,
+				secure: process.env.NODE_ENV === 'production',
+				sameSite: 'lax',
+				maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+			});
+
+			res.redirect(`${process.env.CLIENT_URL}/auth/success`);
+		} catch (error) {
+			console.log(error);
+			res.redirect(`${process.env.CLIENT_URL}/auth/error`);
+		}
+	}
+}
