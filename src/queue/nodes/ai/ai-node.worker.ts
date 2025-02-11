@@ -19,28 +19,30 @@ export class AINodeWorker extends BaseWorker<
 			): Promise<NodeExecutionResult<AINodeOutput>> => {
 				const { nodeId, input } = job.data;
 
-				const node = await db.query.nodes.findFirst({
-					where: eq(nodes.id, nodeId),
-				});
+				// const node = await db.query.nodes.findFirst({
+				// 	where: eq(nodes.id, nodeId),
+				// });
 
-				if (!node) {
-					throw new Error(`AI node - ${nodeId} not found`);
-				}
+				// if (!node) {
+				// 	throw new Error(`AI node - ${nodeId} not found`);
+				// }
 
-				// Validate input
-				if (!node.configuration) {
-					throw new Error('Prompt is required for AI processing');
-				}
+				// // Validate input
+				// if (!node.configuration) {
+				// 	throw new Error('Prompt is required for AI processing');
+				// }
 
-				if (input) {
-					node.configuration = input as unknown as Record<string, string>;
-				}
+				// if (input) {
+				// 	node.configuration = input as unknown as Record<string, string>;
+				// }
 
-				const output = await generateAINodeData(node.configuration);
+				// const output = await generateAINodeData(node.configuration);
+
+				// function ->
 
 				return {
 					success: true,
-					output,
+					// output,
 				} as NodeExecutionResult<AINodeOutput>;
 			}
 		);
