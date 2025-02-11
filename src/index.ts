@@ -5,6 +5,7 @@ import { db } from './db';
 async function bootstrap() {
 	try {
 		const app = await createServer();
+		// console.log(process.env.DATABASE_URL);
 		const result = await db.execute('select 1');
 
 		app.listen(config.port, async () => {

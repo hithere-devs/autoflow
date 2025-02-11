@@ -1,5 +1,8 @@
 // src/controllers/auth.controller.ts
+import { db } from '@/db';
+import { users } from '@/db/schema';
 import { AuthService } from '@/services/auth';
+import { eq } from 'drizzle-orm';
 import { Request, Response } from 'express';
 
 export class AuthController {
@@ -39,6 +42,36 @@ export class AuthController {
 		} catch (error) {
 			console.log(error);
 			res.redirect(`${process.env.CLIENT_URL}/auth/error`);
+		}
+	}
+
+	static async getCurrentUser(req: Request, res: Response) {
+		try {
+			const userId = req.user?.userId; // from auth middleware
+
+			const user = await db.query.users.findFirst({
+				where: eq(users.id, userId),
+			});
+
+			if (!user) {
+				throw new Error('User not found');
+			}
+
+			// Remove sensitive data
+			const { passwordHash, ...userInfo } = user;
+
+			res.json({
+				status: true,
+				data: userInfo,
+			});
+		} catch (error: any) {
+			if (error.message === 'User not found') {
+				res.status(404).json({ message: 'User not found' });
+			}
+			res.status(500).json({
+				status: false,
+				message: 'Failed to fetch user information',
+			});
 		}
 	}
 }

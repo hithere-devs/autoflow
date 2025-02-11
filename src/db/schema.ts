@@ -11,6 +11,8 @@ import {
 } from 'drizzle-orm/pg-core';
 // import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
+import { NodeConfiguration } from '@/queue/nodes/types';
+import { NodeType } from '@/queue/nodes/queue.initializer';
 
 export const users = pgTable('users', {
 	id: text('user_id').primaryKey(),
@@ -66,8 +68,8 @@ export const nodes = pgTable('nodes', {
 	id: text('node_id').primaryKey(),
 	pipelineId: text('pipeline_id').references(() => pipelines.id),
 	nodeTypeId: text('node_type_id').references(() => nodeTypes.id),
-	position: integer('position').notNull().default(0),
-	configuration: jsonb('configuration').$type<Record<string, string>>(),
+	position: integer('position').notNull().default(0), // level of the node in the pipeline graph
+	configuration: jsonb('configuration').$type<NodeConfiguration[NodeType]>(), // Updated type
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -77,6 +79,7 @@ export const nodeEdges = pgTable('node_edges', {
 	sourceNodeId: text('source_node_id').references(() => nodes.id),
 	targetNodeId: text('target_node_id').references(() => nodes.id),
 	pipelineId: text('pipeline_id').references(() => pipelines.id),
+	data: jsonb('data').$type<Record<string, string> | null>(),
 	createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -125,6 +128,10 @@ export const nodesRelations = relations(nodes, ({ one }) => ({
 		fields: [nodes.pipelineId],
 		references: [pipelines.id],
 	}),
+	nodeType: one(nodeTypes, {
+		fields: [nodes.nodeTypeId],
+		references: [nodeTypes.id],
+	}),
 }));
 
 export const nodeEdgesRelations = relations(nodeEdges, ({ one }) => ({
@@ -144,4 +151,5 @@ export const executionsRelations = relations(executions, ({ one }) => ({
 export type User = typeof users.$inferSelect;
 export type Pipeline = typeof pipelines.$inferSelect;
 export type Node = typeof nodes.$inferSelect;
+export type NodeEdge = typeof nodeEdges.$inferSelect;
 export type Execution = typeof executions.$inferSelect;

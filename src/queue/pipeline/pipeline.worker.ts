@@ -1,35 +1,23 @@
-// src/queue/pipeline/pipeline.worker.ts
 import { Job } from 'bullmq';
 import { BaseWorker } from '../base/worker.base';
-import { PipelineExecutionData } from './types';
+import { PipelineExecutionData, QueueInputType } from './types';
 import { db } from '@/db';
-import { eq } from 'drizzle-orm';
-import { pipelines } from '@/db/schema';
-import { BaseQueue } from '../base/queue.base';
-import { textNodeQueue } from '../nodes/text-node/text-node.queue';
-import { aiNodeQueue } from '../nodes/ai/ai-node.queue';
+import { eq, and } from 'drizzle-orm';
+import { executions, pipelines, Node, NodeEdge } from '@/db/schema';
+import {
+	nodeQueues,
+	NodeType,
+	NodeTypeToData,
+} from '../nodes/queue.initializer';
+import { AIInput, AINodeData, TextNodeInput } from '../nodes/types';
 
-// Define supported node types
-export type NodeTypeId = 'text-node-v1' | 'ai-node-v1';
+interface NodeWithEdges extends Node {
+	inDegree: number;
+	processed: boolean;
+}
 
-// Type for the queue mapping
-export type NodeQueueMapping = {
-	[K in NodeTypeId]: BaseQueue;
-};
-
-// Create and export the queue mapping
-export const nodeQueues: NodeQueueMapping = {
-	'text-node-v1': textNodeQueue,
-	'ai-node-v1': aiNodeQueue,
-} as const;
-
-// Type guard to check if a node type is supported
-export const isValidNodeType = (type: string): type is NodeTypeId => {
-	// based on the nodetype we can also check if out input data is matching the type of queue data or not
-	// if not we can throw an error
-	// if it is we can add the data to the queue
-
-	return type in nodeQueues;
+const isValidNodeType = (nodeTypeId: string) => {
+	return true;
 };
 
 export class PipelineWorker extends BaseWorker<PipelineExecutionData> {
@@ -38,7 +26,7 @@ export class PipelineWorker extends BaseWorker<PipelineExecutionData> {
 			const { pipelineId, executionId } = job.data;
 
 			try {
-				// we have the pipeline, nodes, and node_types
+				// Fetch pipeline with nodes and edges
 				const pipeline = await db.query.pipelines.findFirst({
 					where: eq(pipelines.id, pipelineId),
 					with: {
@@ -47,29 +35,116 @@ export class PipelineWorker extends BaseWorker<PipelineExecutionData> {
 					},
 				});
 
-				// we have the pipeline, nodes and node_edges
-				// based on the node and nodeEdges take out the first node and nextNode and then start a chain here where the firstNode is executed and then the exitQueue is the nextNode's Queue and so on based on the node_type_id which is mapped to the queue names of the respective nodes
-
-				// find the position 0 node
-				const firstNode = pipeline?.nodes.find((n) => n.position === 0);
-
-				if (!firstNode || !firstNode.nodeTypeId) {
-					throw new Error('Pipeline does not have a starting node');
+				if (!pipeline || !pipeline.nodes) {
+					throw new Error('Pipeline or nodes not found');
 				}
 
-				console.log(firstNode.nodeTypeId);
+				// Create adjacency list and calculate indegrees
+				const graph = new Map<string, NodeWithEdges>();
+				const edgeMap = new Map<string, NodeEdge[]>();
+				const inDegrees = new Map<string, number>();
 
-				// Inside the worker constructor
-				if (!isValidNodeType(firstNode.nodeTypeId)) {
-					throw new Error(`Unsupported node type: ${firstNode.nodeTypeId}`);
-				}
-
-				const nodeQueue = nodeQueues[firstNode.nodeTypeId];
-				await nodeQueue.addProcessing({
-					nodeId: firstNode.id,
+				// Initialize graphs
+				pipeline.nodes.forEach((node) => {
+					graph.set(node.id, { ...node, inDegree: 0, processed: false });
+					edgeMap.set(node.id, []);
+					inDegrees.set(node.id, 0);
 				});
 
-				// map the queue to the node_type_id
+				// Build edge relationships and calculate indegrees
+				pipeline.nodeEdges.forEach((edge) => {
+					if (edge.sourceNodeId && edge.targetNodeId) {
+						const sourceEdges = edgeMap.get(edge.sourceNodeId) || [];
+						sourceEdges.push(edge);
+						edgeMap.set(edge.sourceNodeId, sourceEdges);
+
+						// Increment target node's indegree
+						const targetNode = graph.get(edge.targetNodeId);
+						if (targetNode) {
+							targetNode.inDegree++;
+							graph.set(edge.targetNodeId, targetNode);
+						}
+					}
+				});
+
+				// Initialize queue with nodes having 0 indegree
+				const queue: NodeWithEdges[] = [];
+				graph.forEach((node) => {
+					if (node.inDegree === 0) {
+						queue.push(node);
+					}
+				});
+
+				// Process nodes in topological order
+				while (queue.length > 0) {
+					const currentNode = queue.shift()!;
+
+					if (
+						!currentNode.nodeTypeId ||
+						!isValidNodeType(currentNode.nodeTypeId)
+					) {
+						throw new Error(`Invalid node type: ${currentNode.nodeTypeId}`);
+					}
+
+					try {
+						// Execute node based on its type
+						const nodeType = currentNode.nodeTypeId as NodeType;
+						const nodeQueue = nodeQueues[nodeType];
+
+						// Now TypeScript knows configuration matches the input type
+						const job = await nodeQueue.addProcessing({
+							nodeId: currentNode.id,
+							input: currentNode.configuration as QueueInputType,
+						});
+
+						console.log(job);
+
+						// Mark as processed and update execution status
+						await db
+							.update(executions)
+							.set({ status: 'running' })
+							.where(
+								and(
+									eq(executions.id, executionId),
+									eq(executions.pipelineId, pipelineId)
+								)
+							);
+
+						// Get outgoing edges and update next nodes
+						const outgoingEdges = edgeMap.get(currentNode.id) || [];
+						for (const edge of outgoingEdges) {
+							if (edge.targetNodeId) {
+								const targetNode = graph.get(edge.targetNodeId);
+								if (targetNode) {
+									targetNode.inDegree--;
+									if (targetNode.inDegree === 0) {
+										queue.push(targetNode);
+									}
+									graph.set(edge.targetNodeId, targetNode);
+								}
+							}
+						}
+					} catch (error: any) {
+						console.error(`Failed to execute node ${currentNode.id}:`, error);
+						await db
+							.update(executions)
+							.set({
+								status: 'failed',
+								log: `Failed at node: ${currentNode.id} - ${error.message}`,
+							})
+							.where(eq(executions.id, executionId));
+						throw error;
+					}
+				}
+
+				// Update execution status to completed
+				await db
+					.update(executions)
+					.set({
+						status: 'completed',
+						completedAt: new Date(),
+					})
+					.where(eq(executions.id, executionId));
 			} catch (error) {
 				console.error(`Pipeline execution failed:`, error);
 				throw error;

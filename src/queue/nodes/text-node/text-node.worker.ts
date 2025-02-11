@@ -55,10 +55,14 @@ export class TextNodeWorker extends BaseWorker<
 					text = text.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
 				}
 
-				return {
+				const response = {
 					success: true,
 					output: { text },
 				};
+
+				// now that response is ready, we need to implement a fn which will fetch the next node and prepare the data according to that nodeType
+
+				return response;
 			}
 		);
 	}
